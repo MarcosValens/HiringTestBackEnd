@@ -57,3 +57,4 @@ python manage.py runserver 0:8000
 ```
 
 
+Django SECRET_KEY has been removed from setting.py I will send you via email.
