@@ -7,8 +7,6 @@ import geojson
 
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
-from geojson import Point, Feature, FeatureCollection, dump
-
 from rest_framework import viewsets
 from .models import HotelInfo
 from .models import HotelReviews
