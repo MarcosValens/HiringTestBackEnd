@@ -1,17 +1,25 @@
 from django.db.models import Count, Q
 
 import json
-import numpy as np
 import pandas as pd
 import geojson
 
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
 from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from .models import HotelInfo
 from .models import HotelReviews
 from .serializer import HotelInfoSerializer
 from .serializer import HotelReviewSerializer
+
+
+class HelloAPIView(APIView):
+    def get(self, request, format=None):
+        with open('./map.geojson') as f:
+            data = json.load(f)
+        return Response(data)
 
 
 class HotelInfoViewSet(viewsets.ModelViewSet):
@@ -20,7 +28,7 @@ class HotelInfoViewSet(viewsets.ModelViewSet):
         geolocator = Nominatim(user_agent='http')
         geocode_with_delay = RateLimiter(geolocator.geocode, min_delay_seconds=1)
         df = pd.DataFrame.from_records(query)
-        df = df.loc[520:523]  # I do this line because it takes too long the geocode all results
+        df = df.loc[520:525]  # I do this line because it takes too long the geocode all results
         df['temp'] = df['hotel_address'].apply(geocode_with_delay)
         df['coords'] = df['temp'].apply(lambda loc: tuple(loc.point) if loc else None)
         df = df['coords']
