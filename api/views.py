@@ -1,5 +1,6 @@
 from django.db.models import Count, Q
 
+import os
 import json
 import pandas as pd
 import geojson
@@ -28,30 +29,34 @@ class HotelInfoViewSet(viewsets.ModelViewSet):
         geolocator = Nominatim(user_agent='http')
         geocode_with_delay = RateLimiter(geolocator.geocode, min_delay_seconds=1)
         df = pd.DataFrame.from_records(query)
-        df = df.loc[520:525]  # I do this line because it takes too long the geocode all results
+        # df = df.loc[520:525]  # I do this line because it takes too long the geocode all results
         df['temp'] = df['hotel_address'].apply(geocode_with_delay)
         df['coords'] = df['temp'].apply(lambda loc: tuple(loc.point) if loc else None)
-        df = df['coords']
-        df = df.tolist()
-        return pd.DataFrame(df, columns=['long', 'lat', 'elev']).dropna()
+        new_df = df[['coords', 'country_area']].dropna()
+        coords_list = new_df['coords'].tolist()
+        df = pd.DataFrame(coords_list, columns=['long', 'lat', 'elev']).dropna()
+        new_df.index = df.index
+        df['country_area'] = new_df['country_area']
+        return df
 
     def data2geojson(df):
         try:
             features = []
-            df.apply(lambda X: features.append(
-                geojson.Feature(geometry=geojson.Point((X["lat"],
-                                                        X["long"],
-                                                        X["elev"])),
-                                properties={"country": "Spain"})), axis=1)
+            df.apply(lambda data: features.append(
+                geojson.Feature(geometry=geojson.Point((data["lat"],
+                                                        data["long"],
+                                                        data["elev"])),
+                                properties={"country_area": data["country_area"]})), axis=1)
             with open('map.geojson', 'w') as fp:
                 geojson.dump(geojson.FeatureCollection(features), fp, sort_keys=True)
         except ValueError:
             print('Out of range float values are not JSON compliant: nan')
 
     queryset = HotelInfo.objects.filter(review_qty__lte=5)
-    query = queryset.values('hotel_address')
-    df = dataframe_creator(query)
-    data2geojson(df)
+    query = queryset.values('hotel_address', 'country_area')
+    if os.path.exists('../map.geojson') or os.path.getsize('../map.geojson') == 0:
+        df = dataframe_creator(query)
+        data2geojson(df)
     serializer_class = HotelInfoSerializer
 
 
